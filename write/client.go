@@ -19,8 +19,8 @@ const (
 )
 
 type ClientConfig struct {
-	BaseURL string
-
+	BaseURL         string
+	WritePath       string
 	Database        string
 	RetentionPolicy string
 	User            string
@@ -218,5 +218,5 @@ func writeURLFromConfig(cfg ClientConfig) string {
 		params.Set("consistency", cfg.Consistency)
 	}
 
-	return cfg.BaseURL + "/write?" + params.Encode()
+	return cfg.BaseURL + cfg.WritePath + "?" + params.Encode()
 }

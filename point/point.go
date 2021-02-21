@@ -1,10 +1,11 @@
 package point
 
 import (
+	"sort"
 	"sync/atomic"
 	"time"
 
-	"github.com/influxdata/influx-stress/lineprotocol"
+	"github.com/yujiahaol68/influx-stress/lineprotocol"
 )
 
 // The point struct implements the lineprotocol.Point interface.
@@ -27,6 +28,7 @@ type point struct {
 // New returns a new point without setting the time field.
 func New(sk []byte, ints, floats []string, p lineprotocol.Precision) *point {
 	fields := []lineprotocol.Field{}
+	fieldKeys := make(map[string]lineprotocol.Field)
 	e := &point{
 		seriesKey: sk,
 		time:      lineprotocol.NewTimestamp(p),
@@ -36,13 +38,22 @@ func New(sk []byte, ints, floats []string, p lineprotocol.Precision) *point {
 	for _, i := range ints {
 		n := &lineprotocol.Int{Key: []byte(i)}
 		e.Ints = append(e.Ints, n)
-		e.fields = append(e.fields, n)
+		fieldKeys[i] = n
 	}
 
 	for _, f := range floats {
 		n := &lineprotocol.Float{Key: []byte(f)}
 		e.Floats = append(e.Floats, n)
-		e.fields = append(e.fields, n)
+		fieldKeys[f] = n
+	}
+
+	keySlice := make([]string, 0, len(ints)+len(floats))
+	keySlice = append(keySlice, ints...)
+	keySlice = append(keySlice, floats...)
+	sort.Strings(keySlice)
+
+	for _, k := range keySlice {
+		e.fields = append(e.fields, fieldKeys[k])
 	}
 
 	return e

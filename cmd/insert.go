@@ -11,26 +11,26 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/influxdata/influx-stress/lineprotocol"
-	"github.com/influxdata/influx-stress/point"
-	"github.com/influxdata/influx-stress/stress"
-	"github.com/influxdata/influx-stress/write"
 	"github.com/spf13/cobra"
+	"github.com/yujiahaol68/influx-stress/lineprotocol"
+	"github.com/yujiahaol68/influx-stress/point"
+	"github.com/yujiahaol68/influx-stress/stress"
+	"github.com/yujiahaol68/influx-stress/write"
 )
 
 var (
-	statsHost, statsDB                   string
-	host, db, rp, precision, consistency string
-	username, password                   string
-	createCommand, dump                  string
-	seriesN, gzip                        int
-	batchSize, pointsN, pps              uint64
-	runtime                              time.Duration
-	tick                                 time.Duration
-	fast, quiet                          bool
-	strict, kapacitorMode                bool
-	recordStats                          bool
-	tlsSkipVerify                        bool
+	statsHost, statsDB                          string
+	host, wpath, db, rp, precision, consistency string
+	username, password                          string
+	createCommand, dump                         string
+	seriesN, gzip                               int
+	batchSize, pointsN, pps                     uint64
+	runtime                                     time.Duration
+	tick                                        time.Duration
+	fast, quiet                                 bool
+	strict, kapacitorMode                       bool
+	recordStats                                 bool
+	tlsSkipVerify                               bool
 )
 
 const (
@@ -49,6 +49,10 @@ func insertRun(cmd *cobra.Command, args []string) {
 	seriesKey := defaultSeriesKey
 	fieldStr := defaultFieldStr
 	if len(args) >= 1 {
+		if args[0] == "help" {
+			cmd.Usage()
+			return
+		}
 		seriesKey = args[0]
 		if !strings.Contains(seriesKey, ",") && !strings.Contains(seriesKey, "=") {
 			fmt.Fprintln(os.Stderr, "First positional argument must be a series key, got: ", seriesKey)
@@ -149,7 +153,7 @@ func insertRun(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Error closing client: %v\n", err.Error())
 	}
 
-	sink.Close()
+	defer sink.Close()
 	throughput := int(float64(totalWritten) / totalTime.Seconds())
 	if quiet {
 		fmt.Println(throughput)
@@ -165,6 +169,7 @@ func init() {
 	insertCmd.Flags().StringVarP(&statsDB, "stats-db", "", "stress_stats", "Database that statistics will be written to")
 	insertCmd.Flags().BoolVarP(&recordStats, "stats", "", false, "Record runtime statistics")
 	insertCmd.Flags().StringVarP(&host, "host", "", "http://localhost:8086", "Address of InfluxDB instance")
+	insertCmd.Flags().StringVarP(&wpath, "write-path", "", "/write", "Write path of InfluxDB host")
 	insertCmd.Flags().StringVarP(&username, "user", "", "", "User to write data as")
 	insertCmd.Flags().StringVarP(&password, "pass", "", "", "Password for user")
 	insertCmd.Flags().StringVarP(&db, "db", "", "stress", "Database that will be written to")
@@ -190,6 +195,7 @@ func init() {
 func client() write.Client {
 	cfg := write.ClientConfig{
 		BaseURL:         host,
+		WritePath:       wpath,
 		Database:        db,
 		RetentionPolicy: rp,
 		User:            username,
@@ -300,6 +306,12 @@ func (s *multiSink) Open() {
 
 func (s *multiSink) run() {
 	const timeFormat = "[2006-01-02 15:04:05]"
+	defer func() {
+		// recover from panic caused by writing to a closed channel
+		if r := recover(); r != nil {
+			return
+		}
+	}()
 	for r := range s.Ch {
 		for _, sink := range s.sinks {
 			select {
@@ -313,6 +325,7 @@ func (s *multiSink) run() {
 
 func (s *multiSink) Close() {
 	s.open = false
+	close(s.Ch)
 	for _, sink := range s.sinks {
 		sink.Close()
 	}

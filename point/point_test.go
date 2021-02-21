@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/influxdata/influx-stress/lineprotocol"
-	"github.com/influxdata/influx-stress/point"
+	"github.com/yujiahaol68/influx-stress/lineprotocol"
+	"github.com/yujiahaol68/influx-stress/point"
 )
 
 var (
@@ -30,7 +30,7 @@ func TestPoint(t *testing.T) {
 			return
 		}
 
-		exp := fmt.Sprintf("cpu,host=server user=%vi,system=%vi,busy=%v,wait=%v %v\n", i, i, i, i, testTime.UnixNano())
+		exp := fmt.Sprintf("cpu,host=server busy=%v,system=%vi,user=%vi,wait=%v %v\n", i, i, i, i, testTime.UnixNano())
 		got := string(buf.Bytes())
 
 		if got != exp {

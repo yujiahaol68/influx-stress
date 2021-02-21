@@ -1,6 +1,8 @@
 package point
 
-import "strings"
+import (
+	"strings"
+)
 
 // TODO: add correct error handling/panic when appropriate
 func generateFieldSet(s string) ([]string, []string) {

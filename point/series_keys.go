@@ -1,6 +1,7 @@
 package point
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"sort"
@@ -62,6 +63,8 @@ func generateSeriesKeys(tmplt string, card int) [][]byte {
 		mods := sliceMod(i, tagCardinalities)
 		series = append(series, []byte(fmt.Sprintf(fmtTmplt, mods...)))
 	}
+
+	sort.Slice(series, func(i, j int) bool { return bytes.Compare(series[i], series[j]) < 0 })
 
 	return series
 }
