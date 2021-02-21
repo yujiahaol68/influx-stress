@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/yujiahaol68/influx-stress/lineprotocol"
@@ -39,6 +40,8 @@ type WriteConfig struct {
 // 1. We reach that MaxPoints specified in the WriteConfig.
 // 2. We've passed the Deadline specified in the WriteConfig.
 func Write(pts []lineprotocol.Point, c write.Client, cfg WriteConfig) (uint64, time.Duration) {
+	sort.Slice(pts, func(i, j int) bool { return bytes.Compare(pts[i].Series(), pts[j].Series()) < 0 })
+
 	if cfg.Results == nil {
 		panic("Results Channel on WriteConfig cannot be nil")
 	}
